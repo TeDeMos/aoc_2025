@@ -4,8 +4,9 @@
 mod utils;
 mod day1;
 mod day2;
+mod day3;
 
 fn main() {
-    day2::puzzle1();
-    day2::puzzle2();
+    day3::puzzle1();
+    day3::puzzle2();
 }
