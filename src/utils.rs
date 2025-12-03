@@ -1,3 +1,4 @@
+use std::fs;
 use std::fs::File;
 use std::io::BufRead;
 
@@ -5,6 +6,8 @@ fn path(day: usize) -> String {
     format!("/home/tedem/dev/RustroverProjects/aoc_2025/input/{day}.txt")
 }
 
+pub fn read_string(day: usize) -> String { fs::read_to_string(path(day)).unwrap() }
+
 pub fn read_lines(day: usize) -> impl Iterator<Item = String> {
-    File::open_buffered(path(day)).expect("Failed to open file").lines().map_while(Result::ok)
+    File::open_buffered(path(day)).unwrap().lines().map_while(Result::ok)
 }
