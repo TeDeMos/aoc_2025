@@ -1,12 +1,13 @@
-#![feature(file_buffered)]
+#![feature(bool_to_result, file_buffered, string_into_chars)]
 #![warn(clippy::pedantic)]
 
-mod utils;
 mod day1;
 mod day2;
 mod day3;
+mod day4;
+mod utils;
 
 fn main() {
-    day3::puzzle1();
-    day3::puzzle2();
+    day4::puzzle1();
+    day4::puzzle2();
 }
