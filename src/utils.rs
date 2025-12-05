@@ -81,6 +81,7 @@ impl<T> Index<(usize, usize)> for Matrix<T> {
         &self.data[row * self.columns + column]
     }
 }
+
 impl<T> IndexMut<(usize, usize)> for Matrix<T> {
     fn index_mut(&mut self, (column, row): (usize, usize)) -> &mut Self::Output {
         assert!(column < self.columns && row < self.rows);
