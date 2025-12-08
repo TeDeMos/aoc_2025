@@ -1,4 +1,5 @@
 use std::mem;
+
 use crate::utils::read_lines;
 
 fn push_unique(vec: &mut Vec<usize>, item: usize) {
@@ -13,7 +14,7 @@ pub fn puzzle1() {
     let mut next = Vec::new();
     let mut result = 0;
     for l in lines {
-        let bytes= l.as_bytes();
+        let bytes = l.as_bytes();
         for b in beams.drain(..) {
             if bytes[b] == b'^' {
                 result += 1;
@@ -34,7 +35,7 @@ pub fn puzzle2() {
     beams[first.find('S').unwrap()] = 1;
     let mut next = vec![0; first.len()].into_boxed_slice();
     for l in lines {
-        let bytes= l.as_bytes();
+        let bytes = l.as_bytes();
         for (n, &b) in beams.iter().enumerate() {
             if b == 0 {
                 continue;
