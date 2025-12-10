@@ -1,4 +1,5 @@
 #![feature(bool_to_result, exact_length_collection, file_buffered, string_into_chars)]
+#![feature(array_windows)]
 #![warn(clippy::pedantic)]
 
 mod day1;
@@ -9,9 +10,10 @@ mod day5;
 mod day6;
 mod day7;
 mod day8;
+mod day9;
 mod utils;
 
 fn main() {
-    day8::puzzle1();
-    day8::puzzle2();
+    day9::puzzle1();
+    day9::puzzle2();
 }

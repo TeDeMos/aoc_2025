@@ -1,7 +1,7 @@
 use std::fs;
 use std::fs::File;
 use std::io::BufRead;
-use std::ops::{Index, IndexMut};
+use std::ops::{Add, Index, IndexMut, Mul, Sub};
 
 fn path(day: usize) -> String {
     format!("/home/tedem/dev/RustroverProjects/aoc_2025/input/{day}.txt")
@@ -87,4 +87,35 @@ impl<T> IndexMut<(usize, usize)> for Matrix<T> {
         assert!(column < self.columns && row < self.rows);
         &mut self.data[row * self.columns + column]
     }
+}
+
+#[derive(Copy, Clone, Debug)]
+pub struct Vec2<T> {
+    pub x: T,
+    pub y: T,
+}
+
+impl<T> Vec2<T> {
+    pub fn map2(self, other: Self, mut f: impl FnMut(T, T) -> T) -> Self {
+        Self { x: f(self.x, other.x), y: f(self.y, other.y) }
+    }
+
+    pub fn product(self) -> T::Output
+    where T: Mul {
+        self.x * self.y
+    }
+}
+
+impl<T: Add<Output = T> + Copy> Add<T> for Vec2<T> {
+    type Output = Self;
+
+    fn add(self, rhs: T) -> Self::Output { Self { x: self.x + rhs, y: self.y + rhs } }
+}
+
+impl<T> From<[T; 2]> for Vec2<T> {
+    fn from([x, y]: [T; 2]) -> Self { Self { x, y } }
+}
+
+pub fn sort2_by_key<T, K: Ord>(a: T, b: T, mut k: impl FnMut(&T) -> K) -> [T; 2] {
+    if k(&a) <= k(&b) { [a, b] } else { [b, a] }
 }
