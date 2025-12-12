@@ -77,11 +77,6 @@ impl<T> Matrix<T> {
         (column < self.columns && row < self.rows).then(|| &self.data[row * self.columns + column])
     }
 
-    pub fn get_mut(&mut self, column: usize, row: usize) -> Option<&mut T> {
-        (column < self.columns && row < self.rows)
-            .then(|| &mut self.data[row * self.columns + column])
-    }
-
     pub fn neighbours(&self, column: usize, row: usize) -> impl Iterator<Item = &T> {
         Self::OFFSETS.into_iter().filter_map(move |(xd, yd)| {
             self.get(column.checked_add_signed(xd)?, row.checked_add_signed(yd)?)
@@ -118,11 +113,6 @@ impl<T> Matrix<T> {
             let value = self[(i, source)] * scale;
             self[(i, target)] += value;
         }
-    }
-
-    pub fn map<U>(self, f: impl FnMut(T) -> U) -> Matrix<U> {
-        let data = self.data.into_iter().map(f).collect();
-        Matrix { columns: self.columns, rows: self.rows, data }
     }
 
     pub fn with_new_default_row(&self) -> Self
@@ -221,7 +211,7 @@ impl Rational {
             self.numerator / self.denominator + 1
         } else {
             self.numerator / self.denominator
-        } 
+        }
     }
 }
 
@@ -295,4 +285,12 @@ impl Ord for Rational {
     fn cmp(&self, other: &Self) -> Ordering {
         (self.numerator * other.denominator).cmp(&(self.denominator * other.numerator))
     }
+}
+
+pub trait TupleExt<T> {
+    fn into_iter(self) -> impl Iterator<Item = T>;
+}
+
+impl<T> TupleExt<T> for (T, T) {
+    fn into_iter(self) -> impl Iterator<Item = T> { <[T; 2]>::from(self).into_iter() }
 }
