@@ -1,7 +1,9 @@
-use std::fs;
+use std::cmp::Ordering;
+use std::fmt::{Debug, Formatter, Write};
 use std::fs::File;
 use std::io::BufRead;
-use std::ops::{Add, Index, IndexMut, Mul, Sub};
+use std::ops::{Add, AddAssign, Div, Index, IndexMut, Mul, MulAssign, Neg, Sub};
+use std::{fmt, fs, iter};
 
 fn path(day: usize) -> String {
     format!("/home/tedem/dev/RustroverProjects/aoc_2025/input/{day}.txt")
@@ -13,10 +15,24 @@ pub fn read_lines(day: usize) -> impl Iterator<Item = String> {
     File::open_buffered(path(day)).unwrap().lines().map_while(Result::ok)
 }
 
+#[derive(Clone)]
 pub struct Matrix<T> {
     columns: usize,
     rows: usize,
     data: Box<[T]>,
+}
+
+impl<T: Debug> Debug for Matrix<T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        for (i, r) in self.iter_rows().enumerate() {
+            f.write_char(if i == 0 { '[' } else { ' ' })?;
+            for i in r {
+                write!(f, " {i:>3?}")?;
+            }
+            f.write_char(if i == self.rows - 1 { ']' } else { '\n' })?;
+        }
+        Ok(())
+    }
 }
 
 #[derive(Debug)]
@@ -71,6 +87,51 @@ impl<T> Matrix<T> {
             self.get(column.checked_add_signed(xd)?, row.checked_add_signed(yd)?)
         })
     }
+
+    pub fn get_row_mut(&mut self, row: usize) -> Option<&mut [T]> {
+        (row < self.rows).then(|| &mut self.data[row * self.columns..(row + 1) * self.columns])
+    }
+
+    pub fn iter_rows(&self) -> impl Iterator<Item = &[T]> { self.data.chunks(self.columns) }
+
+    pub fn swap_rows(&mut self, a: usize, b: usize) {
+        assert!(a < self.rows && b < self.rows);
+        if a == b {
+            return;
+        }
+        let [first_idx, second_idx] = sort2(a * self.columns, b * self.columns);
+        let (first, second) = self.data.split_at_mut(second_idx);
+        first[first_idx..first_idx + self.columns].swap_with_slice(&mut second[..self.columns]);
+    }
+
+    pub fn scale_row<U: Copy>(&mut self, row: usize, scale: U)
+    where T: MulAssign<U> {
+        self.get_row_mut(row).unwrap().iter_mut().for_each(|v| *v *= scale);
+    }
+
+    pub fn add_rows<U: Copy>(&mut self, target: usize, source: usize, scale: U)
+    where
+        T: Mul<U> + Copy,
+        T: AddAssign<T::Output>,
+    {
+        for i in 0..self.columns {
+            let value = self[(i, source)] * scale;
+            self[(i, target)] += value;
+        }
+    }
+
+    pub fn map<U>(self, f: impl FnMut(T) -> U) -> Matrix<U> {
+        let data = self.data.into_iter().map(f).collect();
+        Matrix { columns: self.columns, rows: self.rows, data }
+    }
+
+    pub fn with_new_default_row(&self) -> Self
+    where T: Default + Clone {
+        let mut new_data = Vec::with_capacity(self.data.len() + self.columns);
+        new_data.extend_from_slice(&self.data);
+        new_data.extend(iter::repeat_with(T::default).take(self.columns));
+        Self { columns: self.columns, rows: self.rows + 1, data: new_data.into_boxed_slice() }
+    }
 }
 
 impl<T> Index<(usize, usize)> for Matrix<T> {
@@ -116,6 +177,122 @@ impl<T> From<[T; 2]> for Vec2<T> {
     fn from([x, y]: [T; 2]) -> Self { Self { x, y } }
 }
 
+pub fn sort2<T: Ord>(a: T, b: T) -> [T; 2] { if a <= b { [a, b] } else { [b, a] } }
+
 pub fn sort2_by_key<T, K: Ord>(a: T, b: T, mut k: impl FnMut(&T) -> K) -> [T; 2] {
     if k(&a) <= k(&b) { [a, b] } else { [b, a] }
+}
+
+fn gcd(mut a: i64, mut b: i64) -> i64 {
+    a = a.abs();
+    b = b.abs();
+    while b != 0 {
+        (a, b) = (b, a % b);
+    }
+    a
+}
+
+#[derive(Copy, Clone, Eq, PartialEq)]
+pub struct Rational {
+    numerator: i64,
+    denominator: i64,
+}
+
+impl Rational {
+    pub const ONE: Self = Self { numerator: 1, denominator: 1 };
+    pub const ZERO: Self = Self { numerator: 0, denominator: 1 };
+
+    fn reduce(&mut self) {
+        let g = gcd(self.numerator, self.denominator);
+        self.numerator /= g;
+        self.denominator /= g;
+        if self.denominator < 0 {
+            self.numerator *= -1;
+            self.denominator *= -1;
+        }
+    }
+
+    pub fn is_integer(self) -> bool { self.denominator == 1 }
+
+    pub fn ceil(self) -> i64 {
+        if self.is_integer() {
+            self.numerator
+        } else if self.numerator > 0 {
+            self.numerator / self.denominator + 1
+        } else {
+            self.numerator / self.denominator
+        } 
+    }
+}
+
+impl Debug for Rational {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{}/{}", self.numerator, self.denominator)
+    }
+}
+
+impl Default for Rational {
+    fn default() -> Self { Self::ZERO }
+}
+
+impl From<i64> for Rational {
+    fn from(value: i64) -> Self { Self { numerator: value, denominator: 1 } }
+}
+
+impl AddAssign for Rational {
+    fn add_assign(&mut self, rhs: Self) {
+        self.numerator = self.numerator * rhs.denominator + self.denominator * rhs.numerator;
+        self.denominator *= rhs.denominator;
+        self.reduce();
+    }
+}
+
+impl Mul for Rational {
+    type Output = Self;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        let mut result = Self {
+            numerator: self.numerator * rhs.numerator,
+            denominator: self.denominator * rhs.denominator,
+        };
+        result.reduce();
+        result
+    }
+}
+
+impl MulAssign for Rational {
+    fn mul_assign(&mut self, rhs: Self) {
+        self.numerator *= rhs.numerator;
+        self.denominator *= rhs.denominator;
+        self.reduce();
+    }
+}
+
+impl Div for Rational {
+    type Output = Self;
+
+    fn div(self, rhs: Self) -> Self::Output {
+        let mut result = Self {
+            numerator: self.numerator * rhs.denominator,
+            denominator: self.denominator * rhs.numerator,
+        };
+        result.reduce();
+        result
+    }
+}
+
+impl Neg for Rational {
+    type Output = Self;
+
+    fn neg(self) -> Self::Output { Self { numerator: -self.numerator, ..self } }
+}
+
+impl PartialOrd for Rational {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> { Some(self.cmp(other)) }
+}
+
+impl Ord for Rational {
+    fn cmp(&self, other: &Self) -> Ordering {
+        (self.numerator * other.denominator).cmp(&(self.denominator * other.numerator))
+    }
 }
